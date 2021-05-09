@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+
+<script id="vertex-shader" type="x-shader/x-vertex">#version 300 es
+
+in vec4 vPosition;
+in vec3 vNormal;
+in vec2 vTexCoord ;
+out vec4 fPosition;
+out vec3 fNormal;
+out vec2 fTexCoord ;
+
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+
+
+void
+main()
+{
+	//ref textbook chapter 6.8 and lab
+	//vertex shader output a vertex position in clip coordinates and a vertex color to the rasterizer
+	gl_Position = projectionMatrix * modelViewMatrix * vPosition;
+	fPosition = vPosition;
+	fNormal = vNormal;
+	fTexCoord = vTexCoord ;
+
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">#version 300 es
+
+precision highp float;
+
+in vec4 fPosition;
+in vec3 fNormal;
+
+uniform sampler2D texture0;
+uniform int useTextures ;
+uniform vec4 specularProduct;
+uniform mat4 modelViewMatrix;
+uniform mat4 normalMatrix;
+uniform vec4 lightPosition;
+uniform float shininess;
+
+
+in vec2 fTexCoord ;
+in vec4 specular;
+
+
+
+layout (location=0) out vec4 fragColor ;
+// https://www.khronos.org/opengl/wiki/Layout_Qualifier_(GLSL)#Interface_components
+// https://www.khronos.org/opengl/wiki/Layout_Qualifier_(GLSL)#Fragment_shader_buffer_output
+
+
+
+void
+main()
+{
+	// Clarification:
+	// The sample code of Assignment 02 gives us a shader with Phong lighting model
+	// What I have done is using Blinn-Phong method to make this shader effect with procedural textures.
+	// Some codes refrences Textbook chapter 6.8 and lab
+	//
+	
+	
+	// Transform vertex normal into eye coordinates
+    vec3 pos = (modelViewMatrix * fPosition).xyz;
+    vec3 N = normalize( (normalMatrix*vec4(fNormal,0.0)).xyz);
+	
+	//Direction of the light sourse
+	vec3 L = vec3(normalize(lightPosition.xyz-pos)) ;
+	//direction of the viewer
+    vec3 V = normalize(-pos.xyz) ;
+	//halfway vector, which is used for correcting the highlight loss of Phong method
+	vec3 H = normalize(L+V);
+
+	//default
+    vec4 specular = vec4(0.0, 0.0, 0.0, 1.0);
+   
+   
+	//specular term
+	//The outer max() do: If the light source is behind the surface, there cannot be a specular term.
+    float Ks = max(pow( max(dot(N, H), 0.0), shininess ),0.0);
+    specular = Ks * specularProduct;
+    if( dot(L, N) < 0.0 ) {
+        specular = vec4(0.0, 0.0, 0.0, 1.0);
+    }
+
+	//
+	// note:
+	// Phong method combines ambient,diffuse and specular
+	// However, in this scene I set light position as a very near value to objects.
+	// And our textures are light and clear enough and the scene is also a sunny day
+	// So we need to set lightDiffuse.xyz in main.js to be very small.
+	// but it will let GPU calculate much more to perform a very small visible effect,
+	// I think no need to do that, so I elimited diffuse)
+	//
+
+	//texture display
+    vec4 texDisplay ;
+    texDisplay = texture( texture0, fTexCoord );
+	
+	//combine ambient(texture) and lighting performance (simpfied Phong without diffuse)
+	fragColor = texDisplay + specular;
+
+
+    fragColor.a = 1.0 ;
+}
+</script>
+
+
+
+
+
+<script type="text/javascript" src="Common/webgl-utils.js"></script>
+<script type="text/javascript" src="Common/initShaders.js"></script>
+
+<script type="text/javascript" src="Common/MV.js"></script>
+<script type="text/javascript" src="objects.js"></script>
+<script type="text/javascript" src="main.js"></script>
+
+
+<body>
+<div>Scene: 1942 - Battle of Midway // Student: yaoxuLi_V00908578</div>
+<br/><br/>
+<div>FPS: <span id= "fps"></span></div>
+</br>
+<canvas id="gl-canvas" width="512" height="512">
+Oops ... your browser doesn't support the HTML5 canvas element
+</canvas>
+
+<br/>
+<div>(If your browser is Chrome, you may need to click to start BGM)</div>
+
+<audio id="player" autoplay controls><source src="bgm.mp3" type="audio/mp3"></audio>
+<br/>
+<div id="animToggleButton">
+    <input id="animToggleButtoni" type="button" value="Toggle Animation" style="width:160px;height:40px;"
+    />
+
+</div><br/>
+<div id="sliderX">
+    X-Roll -180 <input id="sliderXi" type="range"
+    min="-180" max="180" step="2" value="0"
+    />
+    180
+</div><br/>
+
+<div id="sliderY">
+    Y-Roll -180 <input id="sliderYi" type="range"
+    min="-180" max="180" step="2" value="0"
+    />
+    180
+</div><br/>
+
+<div id="sliderZ">
+    Z-Roll -180 <input id="sliderZi" type="range"
+    min="-180" max="180" step="2" value="0"
+    />
+    180
+</div><br/>
+
+
+
+<br/>
+
+</body>
+</html>
